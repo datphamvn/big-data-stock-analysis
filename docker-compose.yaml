@@ -38,16 +38,27 @@ services:
       - broker-kafka
 
   kafdrop:
-    image: obsidiandynamics/kafdrop:3.27.0
-    networks:
-      - broker-kafka
-    depends_on:
-      - kafka
-      - zookeeper
-    ports:
-      - 19000:9000
-    environment:
-      KAFKA_BROKERCONNECT: kafka:9092
+     image: obsidiandynamics/kafdrop:3.27.0
+     networks:
+       - broker-kafka
+     depends_on:
+       - kafka
+       - zookeeper
+     ports:
+       - 19000:9000
+     environment:
+       KAFKA_BROKERCONNECT: kafka:9092
+
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    ports:
+#      - 9000:9000
+#    environment:
+#      KAFKA_CLUSTERS_0_NAME: ktech_kafka
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: localhost:9094
+#      DYNAMIC_CONFIG_ENABLED: 'true'
+#    networks:
+#      - broker-kafka
 
   spark-master:
     image: docker.io/bitnami/spark:3.3
@@ -90,16 +101,6 @@ services:
   
   spark-worker:
     image: docker.io/bitnami/spark:3.3
-    # environment:
-    #   - SPARK_MODE=worker
-    #   - SPARK_MASTER_URL=spark://spark-master:7077
-    #   - SPARK_WORKER_MEMORY=1G
-    #   - SPARK_WORKER_CORES=1
-    #   - SPARK_RPC_AUTHENTICATION_ENABLED=no
-    #   - SPARK_RPC_ENCRYPTION_ENABLED=no
-    #   - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-    #   - SPARK_SSL_ENABLED=no
-    #   - SPARK_USER=spark
     environment:
       SPARK_MODE: worker
       SPARK_MASTER_URL: spark://spark-master:7077
@@ -115,32 +116,32 @@ services:
     networks:
       - broker-kafka
 
-  postgresql:
-    image: postgres:latest
-    container_name: ktech_postgresql
-    environment:
-      POSTGRES_DB: stock-info
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./script/initdb.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - broker-kafka
+  # postgresql:
+  #   image: postgres:latest
+  #   container_name: ktech_postgresql
+  #   environment:
+  #     POSTGRES_DB: stock-info
+  #     POSTGRES_USER: admin
+  #     POSTGRES_PASSWORD: admin
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - ./script/initdb.sql:/docker-entrypoint-initdb.d/init.sql
+  #   networks:
+  #     - broker-kafka
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: ktech_pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: pvtd264@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "80:80"  # You can change the port to any you prefer
-    depends_on:
-      - postgresql  # Ensures PostgreSQL is started first
-    networks:
-      - broker-kafka
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   container_name: ktech_pgadmin
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: pvtd264@gmail.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "80:80"  
+  #   depends_on:
+  #     - postgresql  
+  #   networks:
+  #     - broker-kafka
 
   influxdb:
     image: influxdb:latest
@@ -177,36 +178,88 @@ services:
     networks:
       - broker-kafka
 
-  stock-python:
-    image: stock-python
-    container_name: stock-python
-    build: ./producer
-    ports:
-     - "5000:5000"
+  namenode:
+    image: apache/hadoop:3
+    hostname: namenode
+    command: ["hdfs", "namenode"]
     depends_on:
-      - postgresql
-    # environment:
-    #   - POSTGRES_USER=admin
-    #   - POSTGRES_PASSWORD=admin
-    #   - POSTGRES_HOST=postgresql
-    #   - POSTGRES_PORT=5432
-    #   - POSTGRES_DBNAME=stock-info
-    #   - STOCKS=AMZN,AAPL,MSFT,GOOGL
+      - resourcemanager
+      - nodemanager
+    ports:
+      - 9870:9870
+    env_file:
+      - ./config-hadoop
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DBNAME: ${POSTGRES_DBNAME}
-      STOCKS: ${STOCKS}
-    volumes:
-      - ./logs:/app/logs
+      ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
     networks:
       - broker-kafka
+    volumes:
+      - hadoop:/home/
+    restart: on-failure
+
+  datanode:
+    image: apache/hadoop:3
+    command: ["hdfs", "datanode"]
+    depends_on:
+      - namenode
+    env_file:
+      - ./config-hadoop
+    networks:
+      - broker-kafka
+    volumes:
+      - hadoop:/home/
+    restart: on-failure
+
+  resourcemanager:
+    image: apache/hadoop:3
+    hostname: resourcemanager
+    command: ["yarn", "resourcemanager"]
+    ports:
+      - 8088:8088
+    env_file:
+      - ./config-hadoop
+    volumes:
+      - ./test.sh:/opt/test.sh
+    networks:
+      - broker-kafka
+    restart: on-failure
+
+  nodemanager:
+    image: apache/hadoop:3
+    hostname: nodemanager
+    command: ["yarn", "nodemanager"]
+    env_file:
+      - ./config-hadoop
+    networks:
+      - broker-kafka
+    volumes:
+      - hadoop:/home/
+    restart: on-failure
+
+  # stock-python:
+  #   image: stock-python
+  #   container_name: stock-python
+  #   build: ./producer
+  #   ports:
+  #    - "5000:5000"
+  #   depends_on:
+  #     - postgresql
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     POSTGRES_HOST: ${POSTGRES_HOST}
+  #     POSTGRES_PORT: ${POSTGRES_PORT}
+  #     POSTGRES_DBNAME: ${POSTGRES_DBNAME}
+  #     STOCKS: ${STOCKS}
+  #   volumes:
+  #     - ./logs:/app/logs
+  #   networks:
+  #     - broker-kafka
 
 volumes:
   influxdb-storage:
   grafana-storage:
+  hadoop:
 
 networks:
   broker-kafka:

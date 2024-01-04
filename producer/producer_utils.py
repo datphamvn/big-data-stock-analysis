@@ -15,7 +15,7 @@ load_dotenv()
 
 def send_to_kafka(producer, topic, key, partition, message):
     # print("sent to kafka", message)
-    producer.produce(topic, key=key, partition=partition, value=json.dumps(message).encode("utf-8"))
+    producer.produce(topic, key=key, partition=0, value=json.dumps(message).encode("utf-8"))
     producer.flush()
 
 def retrieve_historical_data(producer, stock_symbol, kafka_topic, logger):
@@ -28,6 +28,7 @@ def retrieve_historical_data(producer, stock_symbol, kafka_topic, logger):
     # end_date = t.strftime('%Y-%m-%d')
     end_date = datetime.now()
     start_date = (yf.Ticker(stock_symbols[0]).history(period="14d").index[0]).strftime('%Y-%m-%d')
+
     for symbol_index, stock_symbol in enumerate(stock_symbols):
         historical_data = yf.download(stock_symbol, start=start_date, end=end_date, interval="2m", prepost= True)
         historical_data.loc[historical_data["Volume"] == 0, ["Open", "High", "Low", "Close", "Adj Close", "Volume"]] = np.nan
@@ -43,6 +44,7 @@ def retrieve_historical_data(producer, stock_symbol, kafka_topic, logger):
                 'close': row['Close'],
                 'volume': row['Volume']
             }
+            #print(producer, kafka_topic, stock_symbol, symbol_index, historical_data_point)
             send_to_kafka(producer, kafka_topic, stock_symbol, symbol_index, historical_data_point)
 
 def retrieve_real_time_data(producer, stock_symbol, kafka_topic, logger):
@@ -55,7 +57,8 @@ def retrieve_real_time_data(producer, stock_symbol, kafka_topic, logger):
     while True:
         # Fetch real-time data for the last 1 minute
         current_time = datetime.now()
-        is_market_open_bool = is_stock_market_open(current_time)
+        #is_market_open_bool = is_stock_market_open(current_time)
+        is_market_open_bool = True
         if is_market_open_bool:
             end_time = datetime.now() 
             start_time = end_time - timedelta(days= 1)
@@ -73,8 +76,11 @@ def retrieve_real_time_data(producer, stock_symbol, kafka_topic, logger):
                         'close': latest_data_point['Close'],
                         'volume': latest_data_point['Volume']
                     }
+                    print(producer, kafka_topic, stock_symbol, symbol_index, real_time_data_point)
+                    print("===========================")
                     send_to_kafka(producer, kafka_topic, stock_symbol, symbol_index, real_time_data_point)
                     logger.info(f"Stock value retrieved and pushed to kafka topic {kafka_topic}")
+
         else:
             for symbol_index, stock_symbol in enumerate(stock_symbols):
                 null_data_point = {

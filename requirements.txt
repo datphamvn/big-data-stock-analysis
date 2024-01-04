@@ -5,3 +5,4 @@ psycopg2-binary
 yfinance
 influxdb_client
 schedule
+PyHDFS

@@ -15,7 +15,7 @@ from pyspark.sql.types import *
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType
 from datetime import datetime, timedelta
 import os
-
+import hdfs
 
 from logs.logger import setup_logger
 from InfluxDBWriter import InfluxDBWriter
@@ -92,6 +92,9 @@ if __name__ == "__main__":
                 "volume": realtimeStockPrice['volume']
             }
             influxdb_writer.process(timestamp, tags, fields)
+            print(timestamp, tags, fields)
+            #hdfs.write_to_hdfs(str(message))7
+        print("Batch processed done!")
 
     query = stockDataframe \
         .writeStream \
