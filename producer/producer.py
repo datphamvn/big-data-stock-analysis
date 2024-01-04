@@ -13,7 +13,7 @@ from script.utils import load_environment_variables
 load_dotenv()
 
 
-kafka_bootstrap_servers = "localhost:9094"
+kafka_bootstrap_servers = "localhost:9094,localhost:9095"
 kafka_config = {
     "bootstrap.servers": kafka_bootstrap_servers,
 }

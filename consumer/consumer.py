@@ -23,7 +23,7 @@ import findspark
 findspark.init()
 
 KAFKA_TOPIC_NAME = "real-time-stock-prices"
-KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
+KAFKA_BOOTSTRAP_SERVERS = "kafka-1:29092,kafka-2:29092"
 postgresql_properties  = {
     "user": "admin",
     "password": "admin",
