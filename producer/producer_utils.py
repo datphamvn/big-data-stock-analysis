@@ -3,6 +3,13 @@ from datetime import datetime, timedelta, time, timezone
 import yfinance as yf
 import json
 import time as t
+from seleniumbase import Driver
+import requests
+from bs4 import BeautifulSoup
+import json
+from datetime import datetime
+driver = Driver(browser="chrome")
+
 
 load_dotenv()
 def delivery_report(err, msg):
@@ -18,7 +25,9 @@ def send_to_kafka(producer, topic, key, partition, message):
     producer.flush()
 
 def retrieve_real_time_data(producer, stock_symbol, kafka_topic):
+    stock_symbol = 'BTC-USD,ETH-USD,USDT-USD,BNB-USD,BCC'
     stock_symbols = stock_symbol.split(",") if stock_symbol else []
+    print(stock_symbols)
     if not stock_symbols:
         print(f"No stock symbols provided in the environment variable.")
         exit(1)
@@ -28,7 +37,7 @@ def retrieve_real_time_data(producer, stock_symbol, kafka_topic):
         if is_market_open_bool:
             end_time = datetime.now()
             start_time = end_time - timedelta(days=1)
-            for symbol_index, stock_symbol in enumerate(stock_symbols):
+            for symbol_index, stock_symbol in enumerate(stock_symbols[:4]):
                 real_time_data = yf.download(stock_symbol, start=start_time, end=end_time, interval="1m")
                 if not real_time_data.empty:
                     # Convert and send the latest real-time data point to Kafka
@@ -42,7 +51,38 @@ def retrieve_real_time_data(producer, stock_symbol, kafka_topic):
                         'close': latest_data_point['Close'],
                         'volume': latest_data_point['Volume']
                     }
-                    send_to_kafka(producer, kafka_topic, stock_symbol, symbol_index, real_time_data_point)
+                    print(symbol_index)
+                    print(real_time_data_point)
+                    # send_to_kafka(producer, kafka_topic, stock_symbol, symbol_index, real_time_data_point)
         else:
             print("Market is closing")
+        # try:
+        driver.get("https://banggia.vndirect.com.vn/chung-khoan/hnx30")
+        sourceCode = driver.page_source
+        soup = BeautifulSoup(sourceCode, "html.parser")
+        items = soup.select('#banggia-khop-lenh-body tr')
+        for row in items:
+            row_data = {}
+            symbols = row.select('td span')
+            stock = row.select_one('.has-symbol').text[1:-1]
+            if not stock in stock_symbols:
+                continue
+            print(stock)
+            for symbol in symbols:
+                row_data[symbol.get('id')] = symbol.text
+            real_time_data_point = {
+                'stock': stock,
+                'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z"),
+                'open': None,
+                'high': row_data[f'{stock}ceil'],
+                'low': row_data[f'{stock}floor'],
+                'close': None,
+                'volume': None
+            }
+            print(real_time_data_point)
+            # send_to_kafka(producer, kafka_topic, stock_symbol, symbol_index, real_time_data_point)
+        # except:
+        #     print('error')
         t.sleep(5)
+retrieve_real_time_data('hehe', 'BTC-USD', 'hihi')
+driver.quit()
