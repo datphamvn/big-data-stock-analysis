@@ -3,9 +3,6 @@ from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 from pyspark.sql.functions import to_timestamp
 from pyspark.sql.window import Window
 
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.clustering import KMeans
-
 import pyhdfs
 import json
 
@@ -19,14 +16,9 @@ spark = SparkSession.builder \
     .config("spark.mongodb.output.uri", "mongodb://root:admin@mongodb:27017/bigdata.stock2024") \
     .getOrCreate()
 
-
 # Setup the HDFS client
 hdfs = pyhdfs.HdfsClient(hosts="namenode:9870", user_name="hdfs")
-
-# Define the directory you want to read from
 directory = '/data'
-
-# List all files in the directory
 files = hdfs.listdir(directory)
 print("Files in '{}':".format(directory), files)
 
@@ -86,14 +78,13 @@ basic_stats = df.groupBy("stock").agg(
     F.min("low").alias("historical_low")
 )
 
-# Adjusted Window Specification for daily data
 daily_window_spec = Window.partitionBy("stock").orderBy("date")
 
-# Calculate daily returns based on previous day's close
+# Calculate daily returns
 df = df.withColumn("prev_day_close", F.lag("close").over(daily_window_spec))
 df = df.withColumn("daily_return", (F.col("close") - F.col("prev_day_close")) / F.col("prev_day_close"))
 
-# Calculate 1-day moving average (which is essentially the close price itself for daily data)
+# Calculate 1-day moving average
 df = df.withColumn("moving_avg_1d", F.avg("close").over(daily_window_spec.rowsBetween(0, 0)))
 
 # Show results
@@ -127,16 +118,17 @@ basic_stats.write.format("mongo").mode("append").save()
 # Similarly for other DataFrames
 daily_change_stats.write.format("mongo").mode("append").save()
 
-# Create a features column with relevant columns for clustering
+
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.clustering import KMeans
+
+# K-Means Model
 vec_assembler = VectorAssembler(inputCols=["avg_open", "avg_high", "avg_low", "avg_close", "avg_volume"], outputCol="features")
 df_kmeans = vec_assembler.transform(basic_stats)
 
-# Step 4: Initialize and Train K-Means Model
 kmeans = KMeans().setK(3).setSeed(1).setFeaturesCol("features")
 model = kmeans.fit(df_kmeans)
 
-# Step 5: Assign Clusters
 predictions = model.transform(df_kmeans)
-
-# Step 6: View Results
 predictions.select("stock", "prediction").show()
+

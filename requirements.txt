@@ -5,3 +5,4 @@ findspark
 psycopg2-binary
 influxdb_client
 PyHDFS
+py4j
