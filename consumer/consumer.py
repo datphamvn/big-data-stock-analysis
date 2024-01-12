@@ -59,7 +59,8 @@ if __name__ == "__main__":
         .option("subscribe", KAFKA_TOPIC_NAME) \
         .load()
 
-    stockDataframe = stockDataframe.select(col("value").cast("string").alias("data"))
+    stockDataframe = stockDataframe.select(
+        col("value").cast("string").alias("data"))
     inputStream = stockDataframe.selectExpr("CAST(data as STRING)")
 
     stock_price_schema = StructType([
@@ -73,10 +74,11 @@ if __name__ == "__main__":
     ])
 
     # Parse JSON data and select columns
-    stockDataframe = inputStream.select(from_json(col("data"), stock_price_schema).alias("stock_price"))
+    stockDataframe = inputStream.select(
+        from_json(col("data"), stock_price_schema).alias("stock_price"))
     expandedDf = stockDataframe.select("stock_price.*")
     influxdb_writer = InfluxDBWriter('primary', 'stock-price-v1')
-    #influxdb_writer = InfluxDBWriter(os.environ.get("INFLUXDB_BUCKET"), os.environ.get("INFLUXDB_MEASUREMENT"))
+    # influxdb_writer = InfluxDBWriter(os.environ.get("INFLUXDB_BUCKET"), os.environ.get("INFLUXDB_MEASUREMENT"))
     print("InfluxDB_Init Done")
 
     def process_batch(batch_df, batch_id):

@@ -14,8 +14,10 @@ class InfluxDBWriter:
         self.bucket = bucket
         self.measurement = measurement
         self.client = influxdb_client.InfluxDBClient(url="http://influxdb:8086",
-                                                     token=os.environ.get("INFLUX_TOKEN"),
-                                                     org=os.environ.get("INFLUX_ORG")
+                                                     token=os.environ.get(
+                                                         "INFLUX_TOKEN"),
+                                                     org=os.environ.get(
+                                                         "INFLUX_ORG")
                                                      )
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.is_connected()

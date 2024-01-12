@@ -138,23 +138,38 @@ services:
     volumes:
       - ./:/app/
       - ./packages/postgresql-42.5.4.jar:/opt/bitnami/spark/jars/postgresql-42.5.4.jar
-    command: [ "sh", "-c", "pip install -r /app/requirements.txt && spark-submit --jars /opt/bitnami/spark/jars/postgresql-42.5.4.jar --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3 --master spark://spark-master:7077 /app/consumer/consumer.py" ]
+    command: [ "sh", "-c", "pip install -r /app/requirements.txt && spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3 --master spark://spark-master:7077 /app/consumer/consumer.py" ]
     depends_on:
       - spark-master
 #    restart: unless-stopped
     networks:
       - broker-kafka
 
-#  spark-submit2:
-#    image: docker.io/bitnami/spark:3.3
-#    container_name: ktech_spark_submit2
-#    volumes:
-#      - ./:/app/
-#    command: [ "sh", "-c", "pip install -r /app/requirements.txt && spark-submit2 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3 --master spark://spark-master:7077 /app/consumer/batch_processing.py" ]
-#    depends_on:
-#      - spark-master
-#    networks:
-#      - broker-kafka
+  spark-submit2:
+    image: docker.io/bitnami/spark:3.3
+    container_name: ktech_spark_submit2
+    volumes:
+      - ./:/app/
+    command: [ "sh", "-c", "pip install -r /app/requirements.txt && spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3 --master spark://spark-master:7077 /app/consumer/batch_processing.py" ]
+    depends_on:
+      - spark-master
+    networks:
+      - broker-kafka
+
+  # spark-submit3:
+  #   image: docker.io/bitnami/spark:3.3
+  #   container_name: ktech_spark_submit3
+  #   build: ./consumer
+  #   volumes:
+  #     - ./:/app/
+  #     - ./packages/mongo-spark-connector_2.13-10.2.1.jar:/opt/bitnami/spark/jars/mongo-spark-connector_2.13-10.2.1.jar
+  #   command: ["sh", "-c", "pip install -r /app/requirements.txt && spark-submit --jars /opt/bitnami/spark/jars/mongo-spark-connector_2.13-10.2.1.jar --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.3 --master spark://spark-master:7077 /app/consumer/batch_processing.py"]
+  #   depends_on:
+  #     - spark-master
+  #   restart: unless-stopped
+  #   networks:
+  #     - broker-kafka
+
 
   spark-worker:
     image: docker.io/bitnami/spark:3.3
@@ -173,22 +188,22 @@ services:
     networks:
       - broker-kafka
 
-#  spark-worker2:
-#    image: docker.io/bitnami/spark:3.3
-#    environment:
-#      SPARK_MODE: worker
-#      SPARK_MASTER_URL: spark://spark-master:7077
-#      SPARK_WORKER_MEMORY: 1G
-#      SPARK_WORKER_CORES: 1
-#      SPARK_RPC_AUTHENTICATION_ENABLED: no
-#      SPARK_RPC_ENCRYPTION_ENABLED: no
-#      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
-#      SPARK_SSL_ENABLED: no
-#      SPARK_USER: spark
-#    ports:
-#      - "8082:8082"
-#    networks:
-#      - broker-kafka
+  spark-worker2:
+   image: docker.io/bitnami/spark:3.3
+   environment:
+     SPARK_MODE: worker
+     SPARK_MASTER_URL: spark://spark-master:7077
+     SPARK_WORKER_MEMORY: 1G
+     SPARK_WORKER_CORES: 1
+     SPARK_RPC_AUTHENTICATION_ENABLED: no
+     SPARK_RPC_ENCRYPTION_ENABLED: no
+     SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
+     SPARK_SSL_ENABLED: no
+     SPARK_USER: spark
+   ports:
+     - "8082:8082"
+   networks:
+     - broker-kafka
 
   namenode:
     image: apache/hadoop:3
@@ -210,6 +225,19 @@ services:
     restart: on-failure
 
   datanode:
+    image: apache/hadoop:3
+    command: [ "hdfs", "datanode" ]
+    depends_on:
+      - namenode
+    env_file:
+      - ./config-hadoop
+    networks:
+      - broker-kafka
+    volumes:
+      - hadoop:/home/
+    restart: on-failure
+
+  datanode2:
     image: apache/hadoop:3
     command: [ "hdfs", "datanode" ]
     depends_on:
