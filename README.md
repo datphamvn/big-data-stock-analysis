@@ -15,24 +15,37 @@ This project focuses on the real-time processing and analysis of stock market da
 ## System Architecture
 The system uses a lambda architecture model, integrating both batch and stream processing for comprehensive data analysis. The architecture details can be found in the project report.
 
-![lambda architecture model]("/assets/system_architecture.png")
+![lambda architecture model](assets/system_architecture.png)
 
 ## Installation and Setup
-Provide instructions on setting up the project environment, including steps for installing Kafka, Spark, Hadoop, etc., and how to run the project using Docker.
+Clone project source code:
 
+```
+git clone https://github.com/datphamvn/big-data-stock-analysis.git
+```
+
+Set up and change config (if necessary) at `config-hadoop` and `.env`
 ## Usage
-Describe how to use the system, including examples of real-time data streaming, batch processing, and visualization.
+To initialize and execute components in the Docker environment, use commands:
+```
+docker-compose --env-file ../.\.env up -d --remove-orphans --build
+```
+
+
+Launch producer
+```
+cd producer
+python producer.py
+```
+
+The interface visualized through Grafana is displayed at:
+`http://localhost:3000/`
 
 ## Contributors
-- Phạm Vũ Tuấn Đạt
-- Trần Cao Sơn
-- Trần Quang Khải
-- Hoàng Nghĩa Hiệp
-- Nguyễn Phúc Thắng
+- 20210158	Phạm Vũ Tuấn Đạt
+- 20215472	Trần Cao Sơn
+- 20215401	Trần Quang Khải
+- 20210329	Hoàng Nghĩa Hiệp
+- 20210784	Nguyễn Phúc Thắng
 
-## Acknowledgments
-Credit any sources, inspirations, or academic guidance received during the project.
-
-## License
-Specify the license under which the project is released.
 
